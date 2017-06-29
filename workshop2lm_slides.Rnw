@@ -1,0 +1,713 @@
+\documentclass[l1pt]{beamer}
+
+\usetheme{Rochester}
+\usecolortheme{seagull}
+\setbeamercovered{invisible} % https://www.sharelatex.com/blog/2013/08/20/beamer-series-pt4.html
+
+\usepackage{color} % https://en.wikibooks.org/wiki/LaTeX/Colors#Predefined_colors
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{graphicx}
+\graphicspath{ {figure/}{images/} }
+
+\definecolor{keyidea_bk}{rgb}{0.74, 0.83, 0.9}
+\definecolor{keyidea_tx}{rgb}{0.0, 0.28, 0.67}
+\definecolor{seealso_bk}{rgb}{0.96, 0.73, 1.0}
+\definecolor{seealso_tx}{rgb}{0.38, 0.25, 0.32}
+\definecolor{learnmore_bk}{rgb}{0.52, 0.73, 0.4}
+\definecolor{learnmore_tx}{rgb}{0.0, 0.27, 0.13}
+\definecolor{wwtd_bk}{rgb}{0.98, 0.93, 0.37}
+\definecolor{wwtd_tx}{rgb}{1.0, 0.56, 0.0}
+\definecolor{hwydt_bk}{rgb}{1.0, 0.72, 0.77}
+\definecolor{hwydt_tx}{rgb}{0.79, 0.08, 0.48}
+	
+\newcommand*\keyidea[1]{
+\setbeamercovered{invisible}
+\pause
+  \begin{center}
+  \colorbox{keyidea_bk}{\parbox{0.9\textwidth}{{\color{keyidea_tx}\textbf{Key idea: }#1}}}
+  \end{center}
+}
+
+\newcommand*\seealso[1]{
+\setbeamercovered{invisible}
+\pause
+  \begin{center}
+  \colorbox{seealso_bk}{\parbox{0.9\textwidth}{{\color{seealso_tx}\textbf{See also: }#1}}}
+  \end{center}
+}
+
+\newcommand*\learnmore[1]{
+\setbeamercovered{invisible}
+\pause
+  \begin{center}
+  \colorbox{learnmore_bk}{\parbox{0.9\textwidth}{{\color{learnmore_tx}\textbf{Learn more: }#1}}}
+  \end{center}
+}
+
+\newcommand*\hwydt[1]{
+  \begin{center}
+  \colorbox{hwydt_bk}{\parbox{0.9\textwidth}{{\color{hwydt_tx}\textbf{How would you do this? }#1}}}
+  \end{center}
+}
+
+\newcommand*\wwtd[1]{
+  \begin{center}
+  \colorbox{wwtd_bk}{\parbox{0.9\textwidth}{{\color{wwtd_tx}\textbf{What will this do? }#1}}}
+  \end{center}
+}
+
+
+\begin{document}
+
+\title[R Workshop 2]{Intro to linear models in R}
+
+\date[17/05/2016]{May 17th, 2016}
+\author[R. Hartman]{Rose Hartman}
+\institute[CASE]{Office of the Vice President for Research and Innovation \\ Center for Assessment Statistics \& Evaluation}
+
+\maketitle
+
+<<setup, include=FALSE, echo=FALSE>>=
+library("knitr")
+opts_chunk$set(fig.align='center',fig.show='hold',size='footnotesize', eval=FALSE)
+@
+
+% very important to use option [fragile] for frames containing code output!
+
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Workshop Overview}
+
+\tableofcontents[]
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{This workshop}
+
+\begin{itemize}
+   \item<1-> Focus on the R code rather than the stats --- if you'd like to learn about the stats behind the general linear model more deeply, I can recommend several excellent classes and texts.
+    \item<2-> Lots of practice. Learn R by using R!
+    \item<3-> We'll be using haven to read in an SPSS data file and ggplot2 for plotting
+  \end{itemize}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{}
+
+Keep an eye out for...
+\pause
+\hwydt{}
+\pause
+\wwtd{}
+\learnmore{resources to check out}
+\keyidea{the big ideas you need to hold on to}
+\seealso{other functions or packages that do a similar thing}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{}
+
+If you don't already have ggplot2, and haven installed, do that now:
+<<>>=
+install.packages("ggplot2")
+install.packages("haven")
+
+library("ggplot2")
+library("haven")
+@
+
+
+\end{frame}
+% -------------------------------------------------------------
+
+\section{Background and overview}
+\subsection{What is the general linear model?}
+\setbeamercovered{transparent}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{What counts as part of the general linear model?}
+
+Quite a lot! Most basic stats techniques are based on the general linear model.
+\begin{itemize}
+    \item<1-> regression (simple and multiple)
+    \item<2-> t-tests (all of the flavors)
+    \item<3-> ANOVAs, ANCOVAs, etc.
+    \item<4-> MANOVAs, multivariate multiple regression
+    \item<5-> advanced techniques like HLM, SEM, etc. are extensions
+  \end{itemize}
+
+\keyidea{Most basic stats rely on the same underlying math. Sometimes we want the results displayed differently depending on the design, but the calculations are the same.}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{What is the general linear model?}
+\setbeamercovered{invisible}
+
+All the general linear model does is represent your data generating process as a single equation for a line:\\
+\bigskip
+\[ \textbf{Y} = \textbf{X*B} + \textbf{error} \]
+\pause
+\vfill
+In most cases (when you have a single outcome variable), this can be written in its more familiar form:\\
+\bigskip
+\[ Y = b0 + b1*X1 + b2*X2 + ... + error \]
+
+\end{frame}
+% -------------------------------------------------------------
+
+\subsection{Tips for presenting model results}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Overview}
+\tableofcontents[ 
+    currentsubsection, 
+    hideothersubsections, 
+    sectionstyle=show/shaded, 
+    subsectionstyle=show/shaded, 
+    ] 
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Building dynamic documents}
+
+No matter what software you're using, it's a pain to copy-paste over numbers from a table in your output to a table in your manuscript. \\
+\pause
+\bigskip
+More importantly, any human error in that copy-pasting can create a huge mess.\\
+\pause
+\bigskip
+Wouldn't it be great if you could have R automatically send your output to word or pdf? Wish granted!
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Building dynamic documents}
+
+<<>>=
+install.packages("knitr")
+library("knitr")
+@
+
+\pause
+You can use knitr tools built right into R Studio to write r-markdown documents that include both code and text, and then "knit" them up into .docx, .pdf, or .html.\\
+This makes it easy to get your R output into (close to) the table formatting you'll need in your document.
+
+\seealso{If you want to use latex instead of markdown for the text part, use Sweave files (.rnw) instead of  R-markdown (.rmd)}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Building dynamic documents}
+
+Markdown is a super simple language for formatting text. It can't do much, but it handles most of what you'll need for a basic document, and it's really quick to learn.
+
+\learnmore{ \url{https://daringfireball.net/projects/markdown/basics} }
+\pause
+Try opening a new .rmd file in R Studio now!
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Building dynamic documents}
+
+We'll use pander to automatically format model summaries into lovely tables.
+<< >>=
+install.packages("pander")
+@
+
+\end{frame}
+% -------------------------------------------------------------
+
+
+\section{Run some models!}
+\subsection{Prepping the data}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Overview}
+\tableofcontents[ 
+    currentsubsection, 
+    hideothersubsections, 
+    sectionstyle=show/shaded, 
+    subsectionstyle=show/shaded, 
+    ] 
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Getting your data into R}
+
+Check your working directory:
+<< getwd >>=
+getwd()
+@
+\pause
+If you want R to find something on your computer, you have three options:
+\begin{enumerate}
+  \item Put the file in R's working directory
+  \item Move R's working directory to where ever the file is saved using setwd()
+  \item Specify the file path when you tell R to look for the file
+\end{enumerate}
+
+\seealso{You can also use the menu options in R Studio to change R's working directory.}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Getting your data into R}
+
+I'll use option 3, specifying the file path for the file when I tell R to read it in. 
+\pause
+\bigskip
+Find the file on your computer, get its location, and add that file path to your read\_sav command:
+<< >>=
+atlas <- read_sav("data/ATLAS.sav")
+@
+
+\keyidea{Remember, if your data file isn't in R's working directory you need to tell R where to look for it.}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Check your data}
+
+These are data from an intervention intended to reduce steroid use in student athletes by targeting their strength training self-efficacy. 
+
+<<>>=
+str(atlas)
+head(atlas)
+summary(atlas)
+@
+
+
+\keyidea{Always check your data frame using str() and View() or head() before you run any tests.}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Creating factors}
+
+<< make_factor >>=
+atlas$use0 <- factor(atlas$use0, 
+                     levels=c(0, 1),
+                     labels=c("no", "yes")) 
+
+atlas$intervention <- factor(atlas$intervention, 
+                             levels=c(0, 1),
+                             labels=c("no", "yes")) 
+
+summary(atlas)
+@
+\end{frame}
+% -------------------------------------------------------------
+
+
+\subsection{Running the model}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Overview}
+\tableofcontents[ 
+    currentsubsection, 
+    hideothersubsections, 
+    sectionstyle=show/shaded, 
+    subsectionstyle=show/shaded, 
+    ] 
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{lm()}
+
+<<>>=
+?lm
+@
+
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Writing a formula}
+
+Example question: Do students who got the intervention show improved strength-training self-efficacy, taking into account their pretest strength-training self-efficacy scores?
+\bigskip
+\pause
+<< ex1_model >>=
+model1 <- lm( STSE1 ~ STSE0 + intervention, data=atlas,
+              na.action=na.exclude)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+\setbeamercovered{invisible} 
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Test your knowledge}
+
+\hwydt{Specify a model formula to test whether students' strength-training self-efficacy at post test (STSE1) are related to their post-test self-esteem (SE1)}
+\pause
+<<  >>=
+lm( STSE1 ~ SE1, data=atlas,
+    na.action=na.exclude)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Test your knowledge}
+
+\hwydt{Specify a model formula to test whether students' strength-training self-efficacy at post test (STSE1) are different for the intervention group vs. control}
+\pause
+<<  >>=
+lm( STSE1 ~ intervention, data=atlas,
+    na.action=na.exclude)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Test your knowledge}
+
+\wwtd{What will this model test?}
+<<  >>=
+lm( STSE1 ~ intervention + SE1 + STSE0, data=atlas,
+    na.action=na.exclude)
+@
+\pause
+It will test whether students' strength-training self-efficacy at post test (STSE1) can be predicted from whether they got the intervention, their pretest self-esteem (SE1), controlling for their pretest strength-training self-efficacy (STSE0).
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Test your knowledge}
+
+\hwydt{Expand the previous model to also test whether the effect of the intervention depends on the students' pretest self-esteem (SE1). In other words, add an interaction between intervention and pretest self-esteem.}
+\pause
+<<  >>=
+lm( STSE1 ~ intervention + SE1 + STSE0 + SE1:STSE0, data=atlas,
+    na.action=na.exclude)
+@
+\pause
+<<  >>=
+lm( STSE1 ~ intervention + SE1*STSE0, data=atlas,
+    na.action=na.exclude)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Test your knowledge}
+
+\hwydt{Specify a model formula to test whether students' strength-training self-efficacy at post test (STSE1) can be predicted from whether they got the intervention, their pretest strength-training self-efficacy (STSE0). Allow for the possibility that the effect of the intervention depends on pretest score.}
+\pause
+<<  >>=
+lm( STSE1 ~ intervention + STSE0 + intervention:STSE0, data=atlas,
+    na.action=na.exclude)
+@
+\pause
+<<  >>=
+lm( STSE1 ~ intervention*STSE0, data=atlas,
+    na.action=na.exclude)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{The model}
+
+Let's run that last one.
+<<>>=
+model1 <- lm( STSE1 ~ intervention*STSE0, data=atlas,
+              na.action=na.exclude)
+@
+
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{The model}
+
+Let's look at that object we just created:
+<<>>=
+model1
+
+str(model1)
+
+plot(model1)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+
+
+\subsection{Summarizing the results}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Overview}
+\tableofcontents[ 
+    currentsubsection, 
+    hideothersubsections, 
+    sectionstyle=show/shaded, 
+    subsectionstyle=show/shaded, 
+    ] 
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Summarize the model}
+
+<<>>=
+summary(model1)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Summarize the model}
+
+add this code to your .rmd file, and make sure you've set your knitr options to results='asis'
+<<>>=
+model.sum <- summary(model1)
+pander(model.sum)
+@
+
+\seealso{the stargazer package, which makes lovely model tables and works for knitting to pdf but not Word}
+\seealso{knitr has a function for making tables, kable(), but it doesn't work for model summaries}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Summarize the model}
+
+If you want your results ANOVA style (with the sums of squares and the F tests instead of regression coefficients and t-tests), use the Anova() function in the car package
+<<>>=
+car::Anova(model1, type=3) # type 3 sums of squares
+@
+
+\keyidea{ANOVA style output and regression style output are just two different ways to communicate the same information}
+
+\end{frame}
+% -------------------------------------------------------------
+
+\subsection{Plotting}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Overview}
+\tableofcontents[ 
+    currentsubsection, 
+    hideothersubsections, 
+    sectionstyle=show/shaded, 
+    subsectionstyle=show/shaded, 
+    ] 
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Plotting}
+
+The relationship between pretest and posttest scores
+<<>>=
+ggplot(atlas, aes(x=STSE0, y=STSE1)) + 
+  geom_point()
+@
+
+\pause
+To reduce overplotting:
+<<>>=
+ggplot(atlas, aes(x=STSE0, y=STSE1)) + 
+  geom_point(alpha=.3)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Plotting}
+
+Add in whether or not they got the intervention
+<<>>=
+ggplot(atlas, aes(x=STSE0, y=STSE1, color=intervention)) + 
+  geom_point(alpha=.3)
+@
+
+\pause
+another option
+<<>>=
+ggplot(atlas, aes(x=STSE0, y=STSE1)) + 
+  geom_point(alpha=.3) + 
+  facet_wrap(~ intervention)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Plotting}
+
+Want to change the way levels of a factor display? \\
+You'll need to change the factor itself in the dataframe:
+<< relabel_factor >>=
+atlas$intervention <- factor(atlas$intervention,
+                             levels=c("yes", "no"),
+                             labels=c("intervention", "control"))
+@
+
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Plotting}
+
+Show the line of best fit
+<<>>=
+ggplot(atlas, aes(x=STSE0, y=STSE1, 
+                  color=intervention, fill=intervention)) + 
+  geom_point(alpha=.3) + 
+  geom_smooth(method="lm")
+@
+
+\pause
+with faceting instead
+<<>>=
+ggplot(atlas, aes(x=STSE0, y=STSE1)) + 
+  geom_point(alpha=.3) + 
+  geom_smooth(method="lm") + 
+  facet_wrap(~ intervention)
+@
+
+\keyidea{geom\_smooth(method="lm") will draw the line of best fit through the data it corresponds to. Adding a factor to color= within aes() splits points and lines into subsets}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Plotting}
+<< final_plot >>=
+ggplot(atlas, aes(x=STSE0, y=STSE1, 
+                  color=intervention, fill=intervention)) + 
+  geom_point(alpha=.3) + 
+  geom_smooth(method="lm") + 
+  labs(x="pretest strength training self-efficacy",
+       y="posttest strength training self-efficacy")
+@
+
+\learnmore{For a tutorial on controlling colors in ggplot, see an old R Club post of mine: \url{http://blogs.uoregon.edu/rclub/2015/02/17/picking-pretty-plot-palates/}}
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Plotting the line from your model, exactly}
+Because geom\_smooth() runs its own calculation to draw the line of best fit, sometimes you may want to specify the line yourself, so you can make sure it represents exactly what's in your model.
+
+<< predict >>=
+atlas$pred <- predict(model1, atlas)
+@
+
+\pause
+<< plot_predict >>=
+ggplot(atlas, aes(x=STSE0, y=STSE1, 
+                  color=intervention, fill=intervention)) + 
+  geom_point(alpha=.3) + 
+  geom_line(aes(y=pred, x=STSE0, color=intervention)) + 
+  labs(x="pretest strength training self-efficacy",
+       y="posttest strength training self-efficacy")
+@
+
+\seealso{you can also add lines manually with geom\_abline(), where you specify the slope and intercept}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Additional resources for learning ggplot2}
+\begin{itemize}
+  \item Read Jenny Bryan's ggplot tutorials --- tons of great examples and code! Click on the files that have the file extension .md (those will be the easiest to read) \\ \url{https://github.com/jennybc/ggplot2-tutorial}
+  \item All of the geoms, with pictures \\ \url{http://docs.ggplot2.org/current/}
+  \item For more in-depth material on ggplot2, see the resources at \\ \url{http://ggplot2.org/}
+\end{itemize}
+
+\end{frame}
+% -------------------------------------------------------------
+
+\section{More models}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Getting special output for other types of models}
+
+<<>>=
+?t.test
+@
+
+\pause
+<<>>=
+install.packages("car")
+library("car")
+?Anova
+@
+
+Note: I recommend car::Anova() over stats::aov() because it allows you to use type 3 sums of squares, which is probably what you want and what your readers and colleagues are expecting (it's what SPSS and SAS use).
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Getting special output for other types of models}
+
+Do students' pretest scores differ in the intervention vs. control groups?
+<<>>=
+t.test(STSE0 ~ intervention, data=atlas, 
+       var.equal=TRUE)
+@
+
+\pause
+Welch approximation (does not assume equal variance)
+<<>>=
+t.test(STSE0 ~ intervention, data=atlas, 
+       var.equal=FALSE)
+@
+
+\pause
+How many pariticipants got intervention vs. control?
+<<>>=
+summary(atlas$intervention)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Test your knowledge}
+
+\hwydt{test whether students' pretest self-esteem differ in the intervention vs. control groups}
+\pause
+<<>>=
+t.test(SE0 ~ intervention, data=atlas, 
+       var.equal=TRUE)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Test your knowledge}
+
+\hwydt{Test whether students' pretest strength-training self-efficacy scores (STSE0) differ from zero}
+Hint: Take a look at the help documentation for t.test()
+\pause
+One-sample t-test
+<<>>=
+t.test(x=atlas$STSE0) # can't use formula and data argument for one-sample t-tests
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Test your knowledge}
+
+\hwydt{Test whether there was significant change in students strength-training self-efficacy scores}
+\pause
+Paired-sample t-test
+<<>>=
+t.test(x=atlas$STSE0, y=atlas$STSE1,
+       paired=TRUE) 
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Test your knowledge}
+
+\hwydt{Use an ANOVA to test whether students pretest scores differed based on whether they were assigned to the intervention}
+\pause
+<<>>=
+model <- lm(STSE0 ~ intervention, data=atlas)
+
+car::Anova(model, type=3) # type 3 sums of squares
+@
+
+\end{frame}
+% -------------------------------------------------------------
+
+\end{document}

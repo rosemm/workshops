@@ -1,0 +1,822 @@
+\documentclass[l0pt]{beamer}
+
+\usetheme{Rochester}
+\usecolortheme{seagull}
+\setbeamercovered{transparent} % https://www.sharelatex.com/blog/2013/08/20/beamer-series-pt4.html
+
+\usepackage{color} % https://en.wikibooks.org/wiki/LaTeX/Colors#Predefined_colors
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{graphicx}
+\graphicspath{ {figure/}{images/} }
+
+\definecolor{keyidea_bk}{rgb}{0.74, 0.83, 0.9}
+\definecolor{keyidea_tx}{rgb}{0.0, 0.28, 0.67}
+\definecolor{seealso_bk}{rgb}{0.96, 0.73, 1.0}
+\definecolor{seealso_tx}{rgb}{0.38, 0.25, 0.32}
+\definecolor{learnmore_bk}{rgb}{0.52, 0.73, 0.4}
+\definecolor{learnmore_tx}{rgb}{0.0, 0.27, 0.13}
+\definecolor{wwtd_bk}{rgb}{0.98, 0.93, 0.37}
+\definecolor{wwtd_tx}{rgb}{1.0, 0.56, 0.0}
+\definecolor{hwydt_bk}{rgb}{1.0, 0.72, 0.77}
+\definecolor{hwydt_tx}{rgb}{0.79, 0.08, 0.48}
+	
+\newcommand*\keyidea[1]{
+\setbeamercovered{invisible}
+\pause
+  \begin{center}
+  \colorbox{keyidea_bk}{\parbox{0.9\textwidth}{{\color{keyidea_tx}\textbf{Key idea: }#1}}}
+  \end{center}
+}
+
+\newcommand*\seealso[1]{
+\setbeamercovered{invisible}
+\pause
+  \begin{center}
+  \colorbox{seealso_bk}{\parbox{0.9\textwidth}{{\color{seealso_tx}\textbf{See also: }#1}}}
+  \end{center}
+}
+
+\newcommand*\learnmore[1]{
+\setbeamercovered{invisible}
+\pause
+  \begin{center}
+  \colorbox{learnmore_bk}{\parbox{0.9\textwidth}{{\color{learnmore_tx}\textbf{Learn more: }#1}}}
+  \end{center}
+}
+
+\newcommand*\hwydt[1]{
+  \begin{center}
+  \colorbox{hwydt_bk}{\parbox{0.9\textwidth}{{\color{hwydt_tx}\textbf{How would you do this? }#1}}}
+  \end{center}
+}
+
+\newcommand*\wwtd[1]{
+  \begin{center}
+  \colorbox{wwtd_bk}{\parbox{0.9\textwidth}{{\color{wwtd_tx}\textbf{What will this do? }#1}}}
+  \end{center}
+}
+
+
+\begin{document}
+
+\title[R Workshop 4]{Intro to multilevel modeling in R}
+
+\date[19/05/2016]{May 19th, 2016}
+\author[R. Hartman]{Rose Hartman}
+\institute[CASE]{Office of the Vice President for Research and Innovation \\ Center for Assessment Statistics \& Evaluation}
+
+\maketitle
+
+<<setup, include=FALSE, echo=FALSE>>=
+library("knitr")
+opts_chunk$set(fig.align='center',fig.show='hold',size='footnotesize', eval=TRUE)
+@
+
+% very important to use option [fragile] for frames containing code output!
+
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Workshop Overview}
+
+\tableofcontents[]
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{This workshop}
+
+\begin{itemize}
+   \item<1-> Focus on the R code rather than the stats --- if you'd like to learn about the stats behind MLM more deeply, I can recommend several excellent classes and texts.
+    \item<2-> Lots of practice. Learn R by using R!
+    \item<3-> We'll be using primarily dplyr and tidyr for data wrangling, and ggplot2 for plotting
+    \item<4-> Color-coded content, to help you keep track of the most important pieces
+  \end{itemize}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{}
+
+Keep an eye out for...
+\pause
+\hwydt{}
+\pause
+\wwtd{}
+\learnmore{resources to check out}
+\keyidea{the big ideas you need to hold on to}
+\seealso{other functions or packages that do a similar thing}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{}
+
+If you don't already have dplyr, tidyr, haven, and ggplot2 installed, do that now:
+<<>>=
+install.packages("ggplot2")
+install.packages("haven")
+install.packages("dplyr")
+install.packages("tidyr")
+
+library("ggplot2")
+library("haven")
+library("dplyr")
+library("tidyr")
+@
+
+
+\end{frame}
+% -------------------------------------------------------------
+
+\section{MLM overview}
+\subsection{What is MLM?}
+\setbeamercovered{transparent}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{What is multilevel modeling?}
+
+First, a note on terminology. The statistical technique we'll be discussing today goes by many names:
+\begin{itemize}
+    \item<1-> multilevel modeling (MLM)
+    \item<2-> hierarchical linear modeling (HLM)
+    \item<3-> mixed effects modeling
+    \item<4-> fixed and random effects modeling
+    \item<5-> nested effects models
+    \item<6-> probably more I haven't come across yet
+  \end{itemize}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{When should you consider using multilevel modeling?}
+
+\begin{itemize}
+    \item<1-> Nested data
+    \item<2-> Repeated measures / longitudinal data
+    \item<3-> Random effects (when you want to generalize from a sample to a population, for more than just the subjects in your model)
+  \end{itemize}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Important caveat}
+
+Mulitlevel modeling is powerful and flexible and cool, and really widely applicable. 
+That doesn't mean it's the only right way to analyze these kinds of data.
+There are often many acceptable analysis techniques for a given problem, each with different strengths and weaknesses depending on your situation. 
+
+\end{frame}
+% -------------------------------------------------------------
+
+
+
+\subsection{The lme4 package}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Overview}
+\tableofcontents[ 
+    currentsubsection, 
+    hideothersubsections, 
+    sectionstyle=show/shaded, 
+    subsectionstyle=show/shaded, 
+    ] 
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Install the lme4 package}
+\setbeamercovered{invisible}
+
+<< install_lme4 >>=
+install.packages("lme4")
+library("lme4")
+@
+\pause
+Remember...
+\begin{itemize}
+  \item When you run install.packages(), R contacts CRAN to get the package you want, so you need an internet connection for it to work.
+  \item You only need to install each package once (and again whenever you want updates for it), and it will be saved on your computer so you can use it offline.
+  \item You need to load each package you want to use again in each R session. 
+\end{itemize}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{A note about packages}
+
+Note the message you get when you load lme4: \\
+\bigskip
+{\color{red}The following object is masked from 'package:tidyr': \\
+expand}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Hi, lme4}
+
+Let's get to know our new friend.
+<<>>=
+help(package="lme4")
+@
+
+\seealso{nlme package. For a great comparison of differences between the two packages, see the help page for the lme4 package.}
+
+\end{frame}
+% -------------------------------------------------------------
+\setbeamercovered{transparent}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{lme4}
+
+What makes running a multilevel model different from regular regression models? 
+\begin{itemize}
+  \item<1-> You can model what would otherwise be non-independent observations. Yay!
+  \item<2-> You have several different sources of error variance to think about (and covariances among them!)
+  \item<3-> There is no longer an analytic solution --- the computer has to brute force a solution by trying millions of combinations of parameter estimates and seeing what yields the best fit. The lme4 package offers a few different options for what estimation procdedure to use. It defaults to REstricted Maximum Likelihood (REML), which I recommend.
+\end{itemize}
+
+\end{frame}
+% -------------------------------------------------------------
+
+
+
+\section{Running models}
+\subsection{Prepping your data for MLM}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Overview}
+\tableofcontents[ 
+    currentsubsection, 
+    hideothersubsections, 
+    sectionstyle=show/shaded, 
+    subsectionstyle=show/shaded, 
+    ] 
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Getting your data into R}
+
+Check your working directory:
+<< getwd >>=
+getwd()
+@
+\pause
+If you want R to find something on your computer, you have three options:
+\begin{enumerate}
+  \item Put the file in R's working directory
+  \item Move R's working directory to where ever the file is saved using setwd()
+  \item Specify the file path when you tell R to look for the file
+\end{enumerate}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Getting your data into R}
+
+I'll use option 3, specifying the file path for the file when I tell R to read it in. 
+\pause
+\bigskip
+Find the file on your computer, get its location, and add that file path to your read\_sav command:\\
+<< data >>=
+atlas <- read_sav("data/ATLAS.sav")
+@
+
+\end{frame}
+% -------------------------------------------------------------
+\setbeamercovered{invisible}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Formatting your data}
+
+Your data need to be in "long" format, where each row is just one observation (i.e., one paritcipant). 
+If you have repeated measures data, then each row should be one observation (i.e., one timepoint), not one participant.
+
+\hwydt{ \\ Transform a dataframe from wide to long using dplyr/tidyr commands. }
+\pause
+<<>>=
+?gather
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Formatting your data}
+
+Also, for nested data, make sure your grouping variable is a factor:
+<<>>=
+str(atlas)
+@
+\pause
+<<>>=
+atlas$schoolid <- as.factor(atlas$schoolid)
+
+atlas$intervention <- factor(atlas$intervention, 
+                             levels=c(0,1),
+                             labels=c("no", "yes"))
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Centering}
+
+Why center your variables?
+\begin{itemize}
+  \item<1-> If you have interactions bewteen continuous predictors, not centering can produce multicollinearity :(
+  \item<2-> Centering often makes interpretation easier, if 0 isn't an interesting/meaningful value on your scales.
+  \item<3-> Sometimes it can make your model converge a little faster, since the intercept won't jump around as much iteration to iteration.
+  \item<4-> It doesn't hurt anything, so might as well!
+  \item<5-> Centering only makes sense for continuous variables. Be careful to never try to center a categorical predictor.
+\end{itemize}
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Centering}
+
+
+<< scale >>=
+atlas$STSE0c <- atlas$STSE0 - mean(atlas$STSE0, na.rm=TRUE)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Subset analysis}
+
+One lovely thing about the lmer() function is that it includes a subset argument --- that means if you only want to run the model on some of your observations and not others, you don't have to save a new data frame for that, you can just sepcify the subset right in your lmer() command!\\
+\bigskip
+\pause
+By default, it will use all of the observations in the data frame.
+
+\end{frame}
+% -------------------------------------------------------------
+
+\subsection{Example: Nested data}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Overview}
+\tableofcontents[
+    currentsubsection,
+    hideothersubsections,
+    sectionstyle=show/shaded,
+    subsectionstyle=show/shaded,
+    ]
+\end{frame}
+% -------------------------------------------------------------
+\setbeamercovered{invisible}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Quick review: lm}
+
+Let's say you want to model the effect of the intervention (intervention) on post-test strength-training self-efficacy (STSE1), controlling for pretest strength-training self-efficacy (STSE0). Allow for the fact that the effect of pretest scores on posttets scores may be different for students who did vs. didn't get the intervention.
+
+\hwydt{Write the formula for that model in lm()}
+\pause
+<< lm >>=
+lm(STSE1 ~ intervention * STSE0c, data=atlas,
+   na.action = na.exclude)
+@
+\pause
+But 1226 students in our dataset are in 31 schools. 
+The observations are not independent! 
+MLM to the rescue.
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Null model for ICC}
+
+<<>>=
+model0 <- lmer(STSE1 ~ 1 + 
+                 (1|schoolid), 
+              data = atlas,
+              na.action = na.exclude)
+
+# the variance components
+varcom <- as.data.frame(VarCorr(model0))
+@
+
+\pause
+<< icc >>=
+L2var <- varcom$vcov[1]
+L1var <- varcom$vcov[2]
+
+icc <- L2var/(L2var+L1var)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Model 1: Random intercepts}
+
+First, let's just specify a random intercepts model.\\
+\pause
+
+<<>>=
+model1 <- lmer(STSE1 ~ intervention * STSE0c + 
+                 (1|schoolid), 
+              data = atlas,
+              na.action = na.exclude)
+@
+\pause
+The random effects are the last term in the model, in parentheses. 
+In this case, we have one random factor, schoolid. \\
+In the parentheses before the fence |, you write out all of the effects in your model that you want to vary by that random factor. In this case, it's just a 1, representing the intercept. 
+
+\learnmore{ A great answer on stackexchange: \url{http://stats.stackexchange.com/questions/31569/questions-about-how-random-effects-are-specified-in-lmer}}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Model 1: Random intercepts}
+
+<<>>=
+summary(model1)
+@
+
+Notice there are no p-values for the fixed effects. That's because df in MLM are nuts, and there's no agreed upon way to assess significance. 
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Model 1: Random intercepts}
+If you load the lmerTest package, it will add information about significance tests to the lmer object, using Satterthwate's approximations for df.
+<<>>=
+library(lmerTest)
+
+model1 <- lmer(STSE1 ~ intervention * STSE0c + 
+                 (1|schoolid), 
+              data = atlas,
+              na.action = na.exclude)
+
+summary(model1)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Model 2: Adding random slopes}
+
+When you have more than one random component, you can also estimate the covariance(s) between them, or you can restrict the covariances to be 0. \\
+\pause
+This estimates the covariance between slope for STSE0c and the intercept:
+<<>>=
+model2 <- lmer(STSE1 ~ intervention * STSE0c + 
+                 (1 + STSE0c|schoolid), 
+              data = atlas,
+              na.action = na.exclude)
+
+summary(model2)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Model 2: Adding random slopes}
+
+And this constrains the covariance to be 0:
+<<>>=
+model2.nocov <- lmer(STSE1 ~ intervention * STSE0c + 
+                 (1|schoolid) + (0 + STSE0c|schoolid), 
+              data = atlas,
+              na.action = na.exclude)
+
+summary(model2.nocov)
+@
+
+\seealso{for more control over random component coavriance structure, see the nlme package}
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Model 2: Adding random slopes}
+
+<<>>=
+anova(model1, model2)
+@
+\pause 
+Note that the recommendation from the folks who wrote lme4 is to only use deviance change tests like this when the models have all of the same fixed effects (just the random effects changing).
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Model 3: Adding MORE random slopes}
+
+<<>>=
+model3 <- lmer(STSE1 ~ intervention * STSE0c + 
+                 (1 + intervention * STSE0c | schoolid), 
+              data = atlas,
+              na.action = na.exclude)
+@
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Printing model tables}
+
+The pander package can't handle lme4 objects, unfortunately. \\
+\pause
+But texreg can! It won't work with knitting directly to word, but there's a decent work around:
+<< texreg >>=
+htmlreg(model2, file="model2_table.doc") # one model
+
+htmlreg(list(model1, model2), file="model1and2_table.doc") # compare two or more models
+@
+And then you can copy the table right into your word doc.
+
+\end{frame}
+% -------------------------------------------------------------
+
+\section{Plotting}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Overview}
+\tableofcontents[
+    currentsubsection,
+    hideothersubsections,
+    sectionstyle=show/shaded,
+    subsectionstyle=show/shaded,
+    ]
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Plotting}
+
+<< predict >>=
+atlas$pred1 <- predict(model1)
+
+atlas$pred2 <- predict(model2)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Plotting}
+
+<< geom_point >>=
+ggplot(atlas, aes(y=STSE1, x=STSE0c, color=intervention)) + 
+  geom_point(alpha=.3)
+@
+
+\wwtd{}
+<<  >>=
+ggplot(atlas, aes(y=STSE1, x=STSE0c, color=intervention, group=schoolid)) + 
+  geom_point(alpha=.3) + 
+  geom_smooth(method="lm", se=FALSE)
+@
+
+\wwtd{What would change if I added facet\_wrap( ~ schoolid) to this ggplot?}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Plotting}
+
+Add lines from the models:
+
+<<>>=
+ggplot(atlas, aes(y=STSE1, x=STSE0c, color=intervention)) + 
+  geom_point(alpha=.3) + 
+  geom_line(aes(y=pred1, group=schoolid), alpha=.7) + 
+  labs(title="Model 1: Random Intercepts")
+@
+
+\hwydt{What would you need to change to plot model 2 instead of model 1?}
+\pause
+<<>>=
+ggplot(atlas, aes(y=STSE1, x=STSE0c, color=intervention)) + 
+  geom_point(alpha=.3) + 
+  geom_line(aes(y=pred2, group=schoolid), alpha=.7) + 
+  labs(title="Model 2: Random Slopes of STSE0 and Intercepts") 
+@
+
+\end{frame}
+% -------------------------------------------------------------
+
+%' % -------------------------------------------------------------
+%' \begin{frame}[fragile]{title}
+%' From http://www.unt.edu/rss/class/Jon/R_SC/Module9/LMM_Examples.R
+%' << echo=FALSE>>=
+%' ### Brief Introduction to LINEAR MIXED MODELS in R ###
+%' #
+%' # Also known as: Fixed and Random Effects Models, Nested effects Models, Mixed Effect Models,
+%' # and Hierarchical Linear Modeling.
+%' #
+%' # Read in / import the example data, naming it 'lmm.data'.
+%' 
+%' lmm.data <- read.table("http://www.unt.edu/rss/class/Jon/R_SC/Module9/lmm.data.txt",
+%'    header=TRUE, sep=",", na.strings="NA", dec=".", strip.white=TRUE)
+%' summary(lmm.data)
+%' head(lmm.data)
+%' nrow(lmm.data)
+%' 
+%' # ... omited lm and glm examples ...
+%' 
+%' # Note below, class is nested within school, class is 'under' school. Random effects are specified inside
+%' # parentheses and can be repreated measures, interaction terms, or nested (as is the case here). Simple
+%' # interactions simply use the colon separator: (1|school:class).
+%' lmm.1 <- lmer(extro ~ open + social + class + (1|school/class), data = lmm.data)
+%' summary(lmm.1)
+%' 
+%' lmm.2 <- lmer(extro ~ open + agree + social + class + (1|school/class), data = lmm.data)
+%' summary(lmm.2)
+%' 
+%' # To extract the estimates of the fixed effects parameters.
+%' 
+%' fixef(lmm.2)
+%' 
+%' # To extract the estimates of the random effects parameters.
+%' 
+%' ranef(lmm.2)
+%' 
+%' # To extract the coefficients for each group of the random effect factor (class = 2 groups + school
+%' # = 2 groups == 4 groups).
+%' 
+%' coef(lmm.2)
+%' 
+%' coef(lmm.2)$'class:school'
+%' 
+%' # To extract the predicted values (based on the fitted model).
+%' 
+%' yhat <- fitted(lmm.2)
+%' summary(yhat)
+%' 
+%' # To extract the residuals (errors); and summarize, as well as plot them.
+%' 
+%' residuals <- resid(lmm.2)
+%' summary(residuals)
+%' hist(residuals)
+%' 
+%' ### One other thing worth taking a look at is the Intra Class Correlation.
+%' 
+%' # First, run the 'null' model (which includes just the intercepts and the random effect for the highest level
+%' # of the nesting variables; in this example 'school'.
+%' 
+%' lmm.null <- lmer(extro ~ 1 + (1|school), data = lmm.data)
+%' summary(lmm.null)
+%' 
+%' # Notice the variance component estimates for the random effect. If we add these together, then
+%' # divide that total by the 'school' variance estimate; we get the ICC
+%' 
+%' 95.8720 + 7.1399
+%' 
+%' 95.8720 / 103.0119
+%' 
+%' # This indicates that 93.06886% of the variance in 'extro' can be "explained" by school
+%' # group membership (verified below using Bliese's multilevel package).
+%' 
+%' # ICC1 and ICC2 as described by Bliese.
+%' 
+%' library(multilevel)
+%' 
+%' aov.1 <- aov(extro ~ school, lmm.data)
+%' summary(aov.1)
+%' 
+%' # Below (ICC1) indicates that 93.07% of the variance in 'extro' can be "explained" by school
+%' # group membership.
+%' 
+%' ICC1(aov.1)
+%' 
+%' # The ICC2 value (below) of .9996 indicates that school groups can be very reliably differentiated in terms of
+%' # 'extro' scores.
+%' 
+%' ICC2(aov.1)
+%' 
+%' detach("package:multilevel")
+%' #### Simulating the Posterior Distribution of Predicted Values.
+%' # To simulate a posterior distribution you must load the 'arm' package
+%' # and use the 'sim' function. Note: n = 100 is the default for 'sim'.
+%' 
+%' library(arm)
+%' 
+%' sim.100 <- sim(lmm.2, n = 100)
+%' 
+%' # Show the structure of objects in the 'sim' object.
+%' 
+%' str(sim.100)
+%' 
+%' # Fixed effect parameter estimates resulting from the 'sim' function applied to the fitted model (lmm.3).
+%' 
+%' fe.sim <- fixef(sim.100)
+%' fe.sim
+%' 
+%' # Random effect parameter estimates resulting from the 'sim' function applied to the fitted model (lmm.3).
+%' 
+%' re.sim <- ranef(sim.100)
+%' re.sim[[1]]  # For "class:school" random effect.
+%' re.sim[[2]]  # For "school" random effect.
+%' 
+%' # To get predicted values from the posterior distribution, use the 'fitted' function.
+%' 
+%' yhat.lmm.2 <- fitted(sim.100, lmm.2)
+%' head(yhat.lmm.2)
+%' tail(yhat.lmm.2)
+%' 
+%' # The above object (yhat.lmm.2) is a matrix of 100 (simulations) by 1200 participants.
+%' # In this matrix, each row represents a participant and each column represents a simulated
+%' # predicted value for the outcome variable of our lmm.2 model.
+%' # Therefore, the yhat.lmm.2 object can be used to create credible intervals for
+%' # each participant (i.e. individual level).
+%' 
+%' quantile(yhat.lmm.2, probs = c(.025, .985))  # For first participant (i.e. row 1).
+%' 
+%' # We can also create a data frame with the quantiles for every participant.
+%' 
+%' quant.mat <- data.frame(matrix(rep(NA, 1200*2), ncol = 2))
+%' names(quant.mat) <- c("2.5%", "98.5%")
+%' quant.mat[,1] <- apply(yhat.lmm.2, 1, quantile, probs = .025)
+%' quant.mat[,2] <- apply(yhat.lmm.2, 1, quantile, probs = .985)
+%' 
+%' head(quant.mat, 25)
+%' 
+%' detach("package:arm")
+%' 
+%' #####################################################################################################################
+%' #####################################################################################################################
+%' 
+%' # NOTE: These results will not match up with the same procedures on the same data, run in SPSS (Linear Mixed Models)
+%' # or run in SAS (PROC MIXED); although SPSS and SAS match one another. It has been discovered that the descrepancy
+%' # is due to different reference coding of the categorical variables when in SPSS and SAS compared to the 'lme4'
+%' # package and 'lmer' function. Essentially, all the R functions used here (in this script) code categorical
+%' # factors / variables so that the reference category is the category with the LOWEST numerical value (or
+%' # alphabetically first letter). SPSS and SAS both use the opposite strategy; they code
+%' # categorical factors / variables so that the reference category is the category with the HIGHEST numerical
+%' # value (or alphabetically last letter). This is important to note because, the SPSS/SAS
+%' # Mixed Effects model output produces an intercept term for the fixed effects which is substantially different
+%' # from the intercept term for the fixed effects produced by the 'lme4' package; and of course, with different
+%' # intercepts comes different predicted values based on the model. If interested in getting SPSS or SAS output
+%' # to match what is produced by this script, then simply reverse code the values of the categorical variables
+%' # when the data is imported to SPSS or SAS. Meaning, for instance with the class variable; any case with a value
+%' # of "a" would be changed to a value of "d" and vice versa, any case with a value of "c" would be changed to a
+%' # value of "b" and vice versa.
+%' 
+%' 
+%' detach("package:lme4")
+%' detach("package:Matrix")
+%' detach("package:Rcpp")
+%' 
+%' ####################################################################################
+%' 
+%' 
+%' ######## Additional Considerations ########
+%' ######           CENTERING           ######
+%' 
+%' # In many situation in social science, the predictor variables we deal with do not have a meaningful (or true) zero
+%' # point. For instance, a person is not going to have a intelligence test score of zero. In these
+%' # situations it is common to do some type of Centering. Grand mean centering is much more common than Group
+%' # mean centering because, Group mean centering can change the estimation, fit, and interpretation of hierarchical
+%' # linear models. Grand mean centering results in equivalent models as would be the case if raw scores were used.
+%' # Using either method, the mean of the predictor variable becomes zero after subtracting the Grand mean
+%' # or Group mean from each score. Grand mean centering predictor variables at level one often makes interpretation
+%' # easier and can decrease multicollinearity.
+%' 
+%' 
+%' #########  REFERENCES & RESOURCES  #########
+%' 
+%' # Akaike, H. (1974). A new look at the statistical model identification. I.E.E.E. Transactions on Automatic Control, AC 19, 716 – 723.
+%' # Available at:
+%' # http://www.unt.edu/rss/class/Jon/MiscDocs/Akaike_1974.pdf
+%' 
+%' # Bartko, J. J. (1976). On various intraclass correlation reliability coefficients. Psychological Bulletin, 83, 762-765.
+%' # http://www.unt.edu/rss/class/Jon/MiscDocs/Bartko_1976.pdf
+%' 
+%' # Bates, D., & Maechler, M. (2010). Package ‘lme4’. Reference manual for the package, available at:
+%' # http://cran.r-project.org/web/packages/lme4/lme4.pdf
+%' 
+%' # Bates, D. (2010). Linear mixed model implementation in lme4. Package lme4 vignette, available at:
+%' # http://cran.r-project.org/web/packages/lme4/vignettes/Implementation.pdf
+%' 
+%' # Bates, D. (2010). Computational methods for mixed models. Package lme4 vignette, available at:
+%' # http://cran.r-project.org/web/packages/lme4/vignettes/Theory.pdf
+%' 
+%' # Bates, D. (2010). Penalized least squares versus generalized least squares representations of linear mixed models. Package lme4
+%' # vignette, available at:
+%' # http://cran.r-project.org/web/packages/lme4/vignettes/PLSvGLS.pdf
+%' 
+%' # Bliese, P. (2009). Multilevel modeling in R: A brief introduction to R, the multilevel package and the nlme package. Available at:
+%' # http://cran.r-project.org/doc/contrib/Bliese_Multilevel.pdf
+%' 
+%' # Draper, D. (1995). Inference and hierarchical modeling in the social sciences. Journal of Educational and Behavioral Statistics, 20(2),
+%' # 115 - 147. Available at:
+%' # http://www.unt.edu/rss/class/Jon/MiscDocs/Draper_1995.pdf
+%' 
+%' # Fox, J. (2002). Linear mixed models: An appendix to “An R and S-PLUS companion to applied regression”. Available at:
+%' # http://cran.r-project.org/doc/contrib/Fox-Companion/appendix-mixed-models.pdf
+%' 
+%' # Gelman, A. (2005). Analysis of variance -- why it is more important than ever. The Annals of Statistics, 33(1), 1 -- 53. Available at:
+%' # http://www.unt.edu/rss/class/Jon/MiscDocs/Gelman_2005.pdf
+%' 
+%' # Hofmann, D. A., Griffin, M. A., & Gavin, M. B. (2000). The application of hierarchical linear modeling to organizational research.
+%' # In K. J. Klein (Ed.), Multilevel theory, research, and methods in organizations: Foundations, extensions, and new directions (p. 467 - 511).
+%' # San Francisco, CA: Jossey-Bass. Available at:
+%' # http://www.unt.edu/rss/class/Jon/MiscDocs/Hofmann_2000.pdf
+%' 
+%' # Raudenbush, S. W. (1995). Reexamining, reaffirming, and improving application of hierarchical models. Journal of Educational and Behavioral
+%' # Statistics, 20(2), 210 - 220. Available at:
+%' # http://www.unt.edu/rss/class/Jon/MiscDocs/Raudenbush_1995.pdf
+%' 
+%' # Raudenbush, S. W. (1993). Hierarchical linear models and experimental design. In L. Edwards (Ed.), Applied analysis of variance in behavioral
+%' # science (p. 459 - 496). New York: Marcel Dekker. Available at:
+%' # http://www.unt.edu/rss/class/Jon/MiscDocs/Raudenbush_1993.pdf
+%' 
+%' # Rogosa, D., & Saner, H. (1995). Longitudinal data analysis examples with random coefficient models. Journal of Educational and Behavioral
+%' # Statistics, 20(2), 149 - 170. Available at:
+%' # http://www.unt.edu/rss/class/Jon/MiscDocs/Rogosa_1995.pdf
+%' 
+%' # Schwarz, G. (1978). Estimating the dimension of a model. Annals of Statistics, 6, 461 – 464. Available at:
+%' # http://www.unt.edu/rss/class/Jon/MiscDocs/Schwarz_1978.pdf
+%' 
+%' @
+%' \end{frame}
+%' % -------------------------------------------------------------
+
+\end{document}

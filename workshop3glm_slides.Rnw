@@ -1,0 +1,656 @@
+\documentclass[l1pt]{beamer}
+
+\usetheme{Rochester}
+\usecolortheme{seagull}
+\setbeamercovered{invisible} % https://www.sharelatex.com/blog/2013/08/20/beamer-series-pt4.html
+
+\usepackage{color} % https://en.wikibooks.org/wiki/LaTeX/Colors#Predefined_colors
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{graphicx}
+\graphicspath{ {figure/}{images/} }
+
+\definecolor{keyidea_bk}{rgb}{0.74, 0.83, 0.9}
+\definecolor{keyidea_tx}{rgb}{0.0, 0.28, 0.67}
+\definecolor{seealso_bk}{rgb}{0.96, 0.73, 1.0}
+\definecolor{seealso_tx}{rgb}{0.38, 0.25, 0.32}
+\definecolor{learnmore_bk}{rgb}{0.52, 0.73, 0.4}
+\definecolor{learnmore_tx}{rgb}{0.0, 0.27, 0.13}
+\definecolor{wwtd_bk}{rgb}{0.98, 0.93, 0.37}
+\definecolor{wwtd_tx}{rgb}{1.0, 0.56, 0.0}
+\definecolor{hwydt_bk}{rgb}{1.0, 0.72, 0.77}
+\definecolor{hwydt_tx}{rgb}{0.79, 0.08, 0.48}
+	
+\newcommand*\keyidea[1]{
+\setbeamercovered{invisible}
+\pause
+  \begin{center}
+  \colorbox{keyidea_bk}{\parbox{0.9\textwidth}{{\color{keyidea_tx}\textbf{Key idea: }#1}}}
+  \end{center}
+}
+
+\newcommand*\seealso[1]{
+\setbeamercovered{invisible}
+\pause
+  \begin{center}
+  \colorbox{seealso_bk}{\parbox{0.9\textwidth}{{\color{seealso_tx}\textbf{See also: }#1}}}
+  \end{center}
+}
+
+\newcommand*\learnmore[1]{
+\setbeamercovered{invisible}
+\pause
+  \begin{center}
+  \colorbox{learnmore_bk}{\parbox{0.9\textwidth}{{\color{learnmore_tx}\textbf{Learn more: }#1}}}
+  \end{center}
+}
+
+\newcommand*\hwydt[1]{
+  \begin{center}
+  \colorbox{hwydt_bk}{\parbox{0.9\textwidth}{{\color{hwydt_tx}\textbf{How would you do this? }#1}}}
+  \end{center}
+}
+
+\newcommand*\wwtd[1]{
+  \begin{center}
+  \colorbox{wwtd_bk}{\parbox{0.9\textwidth}{{\color{wwtd_tx}\textbf{What will this do? }#1}}}
+  \end{center}
+}
+
+
+\begin{document}
+
+\title[R Workshop 2]{Intro to generalized linear models in R}
+
+\date[18/05/2016]{May 18th, 2016}
+\author[R. Hartman]{Rose Hartman}
+\institute[CASE]{Office of the Vice President for Research and Innovation \\ Center for Assessment Statistics \& Evaluation}
+
+\maketitle
+
+<<setup, include=FALSE, echo=FALSE>>=
+library("knitr")
+opts_chunk$set(fig.align='center',fig.show='hold',size='footnotesize', eval=TRUE)
+@
+
+% very important to use option [fragile] for frames containing code output!
+
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Workshop Overview}
+
+\tableofcontents[]
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{This workshop}
+
+\begin{itemize}
+   \item<1-> Focus on the R code rather than the stats --- if you'd like to learn about the stats behind the general linear model more deeply, I can recommend several excellent classes and texts.
+    \item<2-> Lots of practice. Learn R by using R!
+    \item<3-> We'll be using ggplot2 for plotting and dplyr for data wrangling
+    \item<4-> Color coded content to help you keep track of the important stuff
+  \end{itemize}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{}
+
+Keep an eye out for...
+\pause
+\hwydt{}
+\pause
+\wwtd{}
+\learnmore{resources to check out}
+\keyidea{the big ideas you need to hold on to}
+\seealso{other functions or packages that do a similar thing}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{}
+
+If you don't already have ggplot2 installed, do that now:
+<<>>=
+install.packages("ggplot2")
+install.packages("dplyr")
+
+library("ggplot2")
+library("dplyr")
+@
+
+
+\end{frame}
+% -------------------------------------------------------------
+
+\section{Background and overview}
+\subsection{Why do we need generalized linear models?}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Why do we need generalized linear models?}
+
+Linear models are only appropriate when your outcome variable(s) are continuous and unbounded. \\
+If you want to model a categorical outcome, or one that's bounded (like a proportion or percent), then usually can't rely on regular linear modeling to get the job done. 
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Why do we need generalized linear models?}
+
+We can coerce problematic outcome variables into nice, continuous ones so that we can still model them with a line.\\
+The strategy for transforming your outcome depends on what its distribution is like to begin with --- if it's binary (or bounded at 0 and 1), then a logit works well. If it's count data, then a log is the right transformation, etc.
+
+\keyidea{Generalized linear models are just linear models on data that's been transformed with a link function.}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Special considerations for generalized linear models}
+
+\begin{itemize}
+  \item<1-> Unlike linear models, there is not a single analytic solution to glms
+  \item<2-> The computer uses brute force to find a solution, iterating over tons of combinations of parameter estimates and seeing which gives the bets model fit
+  \item<3-> This means the results are not exact --- they depend on the sampling algorithm being used --- so you might see very small changes if you run the model again, or if you run it on other software
+  \item<4-> There's a risk that your model won't converge if it's too complicated and you don't have enough data
+\end{itemize}
+
+\end{frame}
+% -------------------------------------------------------------
+
+
+\subsection{Tips for presenting model results}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Overview}
+\tableofcontents[ 
+    currentsubsection, 
+    hideothersubsections, 
+    sectionstyle=show/shaded, 
+    subsectionstyle=show/shaded, 
+    ] 
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Building dynamic documents}
+
+Let's use an .rmd file to keep track of all of the steps in the analysis and prepare the results. If you don't already have knitr installed, get it now.
+<<>>=
+install.packages("knitr")
+library("knitr")
+@
+
+\pause
+You can use knitr tools built right into R Studio to write r-markdown documents that include both code and text, and then "knit" them up into .docx, .pdf, or .html.\\
+This makes it easy to get your R output into (close to) the table formatting you'll need in your document.
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Building dynamic documents}
+
+Markdown is a super simple language for formatting text. It can't do much, but it handles most of what you'll need for a basic document, and it's really quick to learn.
+
+\learnmore{ \url{https://daringfireball.net/projects/markdown/basics} }
+\pause
+Try opening a new .rmd file in R Studio now!
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Building dynamic documents}
+
+We'll use pander to automatically format model summaries into lovely tables.
+<< >>=
+install.packages("pander")
+@
+
+\end{frame}
+% -------------------------------------------------------------
+
+
+\section{Example: Logistic regression}
+\subsection{Prepping the data}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Overview}
+\tableofcontents[ 
+    currentsubsection, 
+    hideothersubsections, 
+    sectionstyle=show/shaded, 
+    subsectionstyle=show/shaded, 
+    ] 
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Getting your data into R}
+
+Check your working directory:
+<< getwd >>=
+getwd()
+@
+\pause
+If you want R to find something on your computer, you have three options:
+\begin{enumerate}
+  \item Put the file in R's working directory
+  \item Move R's working directory to where ever the file is saved using setwd()
+  \item Specify the file path when you tell R to look for the file
+\end{enumerate}
+
+\seealso{You can also use the menu options in R Studio to change R's working directory.}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Getting your data into R}
+
+I'll use option 3, specifying the file path for the file when I tell R to read it in. 
+\pause
+\bigskip
+Find the file on your computer, get its location, and add that file path to your read\_sav command:
+<< >>=
+osf <- read.csv("data/OSF_badges.csv")
+@
+
+\keyidea{Remember, if your data file isn't in R's working directory you need to tell R where to look for it.}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Check your data}
+
+These are data from 
+
+<<>>=
+str(osf)
+head(osf)
+summary(osf)
+@
+\pause
+<<>>=
+osf$date <- as.Date(osf$date)
+str(osf)
+@
+
+
+\keyidea{Always check your data frame using str() and View() or head() before you run any tests.}
+
+\end{frame}
+% -------------------------------------------------------------
+
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Check your data}
+
+We'll want to test our glm against a null model, which means any missing data on our predictor (date) will be problematic --- it means the null model and the test model won't be on the same data. \\
+<<>>=
+?na.omit
+@
+
+
+<<>>=
+osf.lgt <- osf %>% 
+  select(statement.included, date, Journal) %>% 
+  filter(Journal != "Infant behavior & development") %>% 
+  na.omit()
+
+summary(osf.lgt)
+@
+
+
+\end{frame}
+% -------------------------------------------------------------
+
+\subsection{Running the model}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Overview}
+\tableofcontents[ 
+    currentsubsection, 
+    hideothersubsections, 
+    sectionstyle=show/shaded, 
+    subsectionstyle=show/shaded, 
+    ] 
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{glm()}
+
+<<>>=
+?glm
+@
+
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Writing the formula}
+
+Did it become more likely for articles to provide a data statement (statement.included) over time (date)?
+\bigskip
+\pause
+In modeling functions in R, the model is usually provided as a formula, like: outcome ~ predictor1 + predictor2 etc. How should we specify the formula for this test?
+\bigskip
+\pause
+<<  >>=
+glm(statement.included ~ date, data=osf.lgt,
+     family=binomial(link="logit"),
+     na.action=na.exclude)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Link functions}
+
+
+<< links >>=
+?binomial
+@
+
+\end{frame}
+% -------------------------------------------------------------
+
+% -------------------------------------------------------------
+\begin{frame}[fragile]{The model}
+
+Let's run the model.
+<< model >>=
+logit.model1 <- glm(statement.included ~ date, data=osf.lgt,
+                   family=binomial(link="logit"),
+                   na.action=na.exclude)
+@
+
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{The model}
+
+Let's look at that object we just created:
+<<>>=
+logit.model1
+
+str(logit.model1)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+
+
+\subsection{Summarizing the results}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Overview}
+\tableofcontents[ 
+    currentsubsection, 
+    hideothersubsections, 
+    sectionstyle=show/shaded, 
+    subsectionstyle=show/shaded, 
+    ] 
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Summarize the model}
+
+<<>>=
+summary(logit.model1)
+@
+\pause
+Note that R prints the results such that the first level of the outcome variable is a failure, so these results articulate the probability of the second level of statement.included happening. \\
+To see the order of the levels in the data frame, use levels():
+
+<<>>=
+levels(osf.lgt$statement.included)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Summarize the model}
+
+add this code to your .rmd file, and make sure you've set your knitr options to results='asis'
+<<>>=
+model.sum <- summary(logit.model1)
+pander(model.sum)
+@
+
+\seealso{the stargazer package, which makes lovely model tables and works for knitting to pdf but not Word}
+\seealso{knitr has a function for making tables, kable(), but it doesn't work for model summaries}
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Testing a series of models}
+
+It's typical to test a series of glms, beginning with a null model (no predictors).
+<< >>=
+logit.model0 <- glm(statement.included ~ 1, data=osf.lgt,
+                    family=binomial(link="logit"),
+                    na.action=na.exclude)
+@
+\pause
+Use anova() to test for a significant improvement in model fit from the null model to our test model:
+
+<<>>=
+anova(logit.model0, logit.model1, test="Chisq") 
+@
+
+Since we want to test for a significant change in model fit (deviance), we'll used a chi-squared test.
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Classification tables}
+
+For logistic regression, it's nice to have a classification table showing your model's predicted outcomes compared to the actual outcome.
+\pause
+<< predict >>=
+osf.lgt$pred1 <- predict(logit.model1, 
+                                osf.lgt, 
+                                type="response") 
+
+osf.lgt$pred0 <- predict(logit.model0, 
+                                 osf.lgt, 
+                                 type="response") 
+@
+Note that if you leave out the type="response" argument, or enter type="link" instead, it will give you predicted logits instead of predicted probabilities.
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Classification tables}
+
+Set a probability cutoff (let's use .5). Probabilities above this will be classified as "yes", and below will be classified as "no".
+<< clas >>=
+osf.lgt$clas0 <- ifelse(osf.lgt$pred0 >= .5, 1,
+                                ifelse(osf.lgt$pred0 < .5, 0, 
+                                       NA))
+osf.lgt$clas1 <- ifelse(osf.lgt$pred1 >= .5, 1,
+                                ifelse(osf.lgt$pred1 < .5, 0, 
+                                       NA))
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Classification tables}
+
+Convert the new classification variables to factors, for cleaner output in the crosstabs.
+<< clas_factor >>=
+osf.lgt$clas0 <- factor(osf.lgt$clas0,
+                                levels=c(1,0),
+                                labels=c("yes", "no"))
+osf.lgt$clas1 <- factor(osf.lgt$clas1,
+                                levels=c(1,0),
+                                labels=c("yes", "no"))
+@
+\pause
+<< crosstabs >>=
+xtabs(~ statement.included + clas0, data=osf.lgt)
+
+xtabs(~ statement.included + clas1, data=osf.lgt)
+@
+
+\seealso{gmodels::CrossTable(), which makes fancier crosstabs}
+
+\end{frame}
+% -------------------------------------------------------------
+
+
+\subsection{Plotting}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Overview}
+\tableofcontents[ 
+    currentsubsection, 
+    hideothersubsections, 
+    sectionstyle=show/shaded, 
+    subsectionstyle=show/shaded, 
+    ] 
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Plotting}
+
+The relationship between publication date and whether there was a data statement available
+<<>>=
+ggplot(osf.lgt, aes(x=date, y=statement.included)) + 
+  geom_point(alpha=.3)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Plotting the line from your model}
+
+Note that R counts factor levels starting at 1, so "no" and "yes" are plotted at 1 and 2 respectively. To line them up with the predicted values from the model, we need to subtract 1.
+\pause
+<< plot_predict >>=
+ggplot(osf.lgt, aes(x=date, y=as.numeric(statement.included)-1)) + 
+  geom_point( alpha=.3 ) + 
+  geom_line( aes(y=pred, x=date) ) +
+  labs(y="Probability of providing a data statement")
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Additional resources for learning ggplot2}
+\begin{itemize}
+  \item Read Jenny Bryan's ggplot tutorials --- tons of great examples and code! Click on the files that have the file extension .md (those will be the easiest to read) \\ \url{https://github.com/jennybc/ggplot2-tutorial}
+  \item All of the geoms, with pictures \\ \url{http://docs.ggplot2.org/current/}
+  \item For more in-depth material on ggplot2, see the resources at \\ \url{http://ggplot2.org/}
+\end{itemize}
+
+\learnmore{For a tutorial on controlling colors in ggplot, see an old R Club post of mine: \url{http://blogs.uoregon.edu/rclub/2015/02/17/picking-pretty-plot-palates/}}
+
+\end{frame}
+% -------------------------------------------------------------
+
+\subsection{Additional predictors}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{The model}
+
+\wwtd{\\ What question would this model test?}
+<< model2 >>=
+logit.model2 <- glm(statement.included ~ date*Journal, data=osf.lgt,
+                   family=binomial(link="logit"),
+                   na.action=na.exclude)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Testing against simpler models}
+
+<<>>=
+anova(logit.model0, logit.model1, logit.model2, test="Chisq") 
+@
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Getting predicted values}
+
+<<>>=
+osf.lgt$pred2 <- predict(logit.model2, 
+                                osf.lgt, 
+                                type="response") 
+osf.lgt$clas2 <- ifelse(osf.lgt$pred2 >= .5, 1,
+                                ifelse(osf.lgt$pred2 < .5, 0, 
+                                       NA))
+osf.lgt$clas2 <- factor(osf.lgt$clas2,
+                                levels=c(1,0),
+                                labels=c("yes", "no"))
+
+xtabs(~ statement.included + clas2, data=osf.lgt)
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Plotting}
+<< plot_predict2 >>=
+ggplot(osf.lgt, aes(x=date, y=as.numeric(statement.included)-1, 
+                    color=Journal)) + 
+  geom_point( alpha=.3 ) + 
+  geom_line( aes(y=pred2, x=date) ) +
+  labs(y="Probability of providing a data statement")
+@
+
+\end{frame}
+% -------------------------------------------------------------
+
+
+\section{Other glms}
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Other glms}
+
+Let's say you wanted to see if the number of experiments reported in each article varies by journal. 
+\pause
+<<>>=
+summary(osf$Number.of.experiments)
+
+hist(osf$Number.of.experiments)
+@
+\pause
+There are a couple reasonable options for a link function here. Let's go with Poisson.
+\pause
+<<>>=
+osf.pois <- osf %>% 
+  select(Number.of.experiments, Journal) %>% 
+  filter(Journal != "Infant behavior & development") %>% 
+  na.omit()
+@
+
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Other glms}
+
+\hwydt{Write the glm call to model number of experiments by journal, using a Poisson link.}
+
+<< pos_model >>=
+pois.model <- glm(Number.of.experiments ~ Journal, data=osf.pois,
+                   family=poisson(link = "log"),
+                   na.action=na.exclude)  
+@
+
+\end{frame}
+% -------------------------------------------------------------
+% -------------------------------------------------------------
+\begin{frame}[fragile]{Other glms}
+
+<<>>=
+ggplot(osf.pois, aes(x=Number.of.experiments)) + 
+  geom_histogram() 
+@
+\pause
+Show Journal info as well
+<<>>=
+ggplot(osf.pois, aes(x=Number.of.experiments, fill=Journal)) + 
+  geom_histogram()
+
+ggplot(osf.pois, aes(x=Number.of.experiments, fill=Journal)) + 
+  geom_density(alpha=.3, adjust=2) 
+@
+\pause
+Try adding facet wrap by Journal as well, to put each density plot in its own facet.
+\end{frame}
+% -------------------------------------------------------------
+
+\end{document}
